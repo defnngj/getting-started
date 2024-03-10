@@ -14,6 +14,7 @@ import {
   WechatyBuilder,
   log,
 }                  from 'wechaty'
+import { callLocalAPI } from './api.ts'
 
 import qrcodeTerminal from 'qrcode-terminal'
 
@@ -40,8 +41,59 @@ function onLogout (user: Contact) {
   log.info('StarterBot', '%s logout', user)
 }
 
+// 给所有联系人发送捡漏消息
+async function sendMessageToAll () {
+  const contactList = await bot.Contact.findAll()
+
+  try {
+    const resp = await callLocalAPI()
+    const { success, result } = resp || {}
+
+    if (success) {
+      for (const contact of contactList) {
+        await contact.say(result)
+      }
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+let interval: NodeJS.Timer
+
 async function onMessage (msg: Message) {
   log.info('StarterBot', msg.toString())
+  // 定时任务 5分钟触发一次
+  if (!interval) {
+    interval = setInterval(sendMessageToAll, 5 * 60 * 1000)
+  }
+  // const contactList = await bot.Contact.findAll()
+  // const roomList = await bot.Room.findAll()
+
+  // // log.info('Bot', 'on(message) skip non-text message: %s', contact)
+  // // await contact.say('你好，这是一条自动发送的消息！')
+  // await sleep(5000)
+  // try {
+  //   // 获取捡漏消息
+  //   const resp = await callLocalAPI()
+  //   const success = resp?.success
+  //   const result = resp?.result
+
+  //   if (success === true) {
+  //     for (const contact of contactList) {
+  //       log.info('个人', contact)
+  //       await contact.say(result)
+  //     }
+  //     // for (const room of roomList) {
+  //     //   log.info('群', room)
+  //     //   // await contact.say('你好，这是一条自动发送的消息！')
+  //     // }
+  //     // console.log(`当前用户加入的群组总数：${rooms.length}`);
+  //   }
+  // } catch (error) {
+  //   console.error('Error calling API:', error)
+  //   return
+  // }
 
   if (msg.text() === 'ding') {
     await msg.say('dong')
