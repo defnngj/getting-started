@@ -63,9 +63,9 @@ let interval: NodeJS.Timer
 
 async function onMessage (msg: Message) {
   log.info('StarterBot', msg.toString())
-  // 定时任务 5分钟触发一次
+  // 定时任务 1小时触发一次
   if (!interval) {
-    interval = setInterval(sendMessageToAll, 5 * 60 * 1000)
+    interval = setInterval(sendMessageToAll, 60 * 60 * 1000)
   }
   // const contactList = await bot.Contact.findAll()
   // const roomList = await bot.Room.findAll()
