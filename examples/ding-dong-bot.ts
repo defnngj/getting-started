@@ -13,6 +13,7 @@ import {
   ScanStatus,
   WechatyBuilder,
   log,
+  Friendship,
 }                  from 'wechaty'
 import { callLocalAPI } from './api.ts'
 
@@ -39,6 +40,43 @@ function onLogin (user: Contact) {
 
 function onLogout (user: Contact) {
   log.info('StarterBot', '%s logout', user)
+}
+
+async function onFriendship (friendship: Friendship) {
+  let logMsg
+
+  try {
+    logMsg = 'received `friend` event from ' + friendship.contact().name()
+    log.info(logMsg)
+
+    switch (friendship.type()) {
+      /**
+       *
+       * New Friend Request
+       *
+       * when request is set, we can get verify message from `request.hello`,
+       * and accept this request by `request.accept()`
+       */
+      case bot.Friendship.Type.Receive:
+        logMsg = 'accepted automatically'
+        log.info('before accept')
+        await friendship.accept()
+
+        // if want to send msg , you need to delay sometimes
+        await new Promise((r) => setTimeout(r, 1000))
+        await friendship.contact().say(`${friendship.contact().name()} 你好, 我是剑三小舞!`)
+        log.info('after accept')
+        break
+
+      default:
+        break
+    }
+  } catch (e) {
+    console.error(e)
+    logMsg = 'Friendship try catch failed'
+  }
+
+  log.info(logMsg)
 }
 
 // 给所有联系人发送捡漏消息
@@ -95,8 +133,13 @@ async function onMessage (msg: Message) {
   //   return
   // }
 
+  // 测试ding~dong：
   if (msg.text() === 'ding') {
     await msg.say('dong')
+  }
+  // 蹲号模板（暂未开放）：
+  if (msg.text() === '蹲号') {
+    await msg.say('蹲号模版(暂未开放):\n 条件1：\n 条件2：\n 条件3：\n')
   }
 }
 
@@ -140,6 +183,7 @@ bot.on('scan',    onScan)
 bot.on('login',   onLogin)
 bot.on('logout',  onLogout)
 bot.on('message', onMessage)
+bot.on('friendship', onFriendship)
 
 bot.start()
   .then(() => log.info('StarterBot', 'Starter Bot Started.'))
