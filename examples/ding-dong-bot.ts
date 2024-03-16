@@ -19,6 +19,34 @@ import { callLocalAPI } from './api.ts'
 
 import qrcodeTerminal from 'qrcode-terminal'
 
+let interval: NodeJS.Timer| undefined
+
+// 给所有联系人&群发送捡漏消息
+async function sendMessageToAll () {
+  const contactList = await bot.Contact.findAll()
+  const roomList = await bot.Room.findAll()
+
+  try {
+    const resp = await callLocalAPI()
+    const { success, result } = resp || {}
+
+    if (success) {
+      // 给用户发消息
+      for (const contact of contactList) {
+        if (contact.type() === bot.Contact.Type.Individual) {
+          await contact.say(result)
+        }
+      }
+      // 给群发消息
+      for (const room of roomList) {
+        await room.say(result)
+      }
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 function onScan (qrcode: string, status: ScanStatus) {
   if (status === ScanStatus.Waiting || status === ScanStatus.Timeout) {
     const qrcodeImageUrl = [
@@ -36,6 +64,20 @@ function onScan (qrcode: string, status: ScanStatus) {
 
 function onLogin (user: Contact) {
   log.info('StarterBot', '%s login', user)
+  log.info('开启定时任务！！')
+  // 确保定时器只被设置一次
+  if (!interval) {
+    interval = setInterval(() => {
+      // 使用立即执行的异步函数来调用 sendMessageToAll
+      void (async () => {
+        try {
+          await sendMessageToAll()
+        } catch (error) {
+          console.error(error)
+        }
+      })()
+    }, 60 * 60 * 1000) // 设置为每小时执行一次
+  }
 }
 
 function onLogout (user: Contact) {
@@ -79,59 +121,8 @@ async function onFriendship (friendship: Friendship) {
   log.info(logMsg)
 }
 
-// 给所有联系人发送捡漏消息
-async function sendMessageToAll () {
-  const contactList = await bot.Contact.findAll()
-
-  try {
-    const resp = await callLocalAPI()
-    const { success, result } = resp || {}
-
-    if (success) {
-      for (const contact of contactList) {
-        await contact.say(result)
-      }
-    }
-  } catch (err) {
-    console.error(err)
-  }
-}
-
-let interval: NodeJS.Timer
-
 async function onMessage (msg: Message) {
   log.info('StarterBot', msg.toString())
-  // 定时任务 1小时触发一次
-  if (!interval) {
-    interval = setInterval(sendMessageToAll, 60 * 60 * 1000)
-  }
-  // const contactList = await bot.Contact.findAll()
-  // const roomList = await bot.Room.findAll()
-
-  // // log.info('Bot', 'on(message) skip non-text message: %s', contact)
-  // // await contact.say('你好，这是一条自动发送的消息！')
-  // await sleep(5000)
-  // try {
-  //   // 获取捡漏消息
-  //   const resp = await callLocalAPI()
-  //   const success = resp?.success
-  //   const result = resp?.result
-
-  //   if (success === true) {
-  //     for (const contact of contactList) {
-  //       log.info('个人', contact)
-  //       await contact.say(result)
-  //     }
-  //     // for (const room of roomList) {
-  //     //   log.info('群', room)
-  //     //   // await contact.say('你好，这是一条自动发送的消息！')
-  //     // }
-  //     // console.log(`当前用户加入的群组总数：${rooms.length}`);
-  //   }
-  // } catch (error) {
-  //   console.error('Error calling API:', error)
-  //   return
-  // }
 
   // 测试ding~dong：
   if (msg.text() === 'ding') {
