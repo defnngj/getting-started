@@ -35,6 +35,7 @@
   "homepage": "https://github.com/wechaty/getting-started#readme",
   "dependencies": {
     "dotenv": "^16.0.0",
+    "nanoid": "^5.0.6",
     "qrcode-terminal": "^0.12.0",
     "wechaty": "^1.18.1",
     "wechaty-cqrs": "^0.7.5",

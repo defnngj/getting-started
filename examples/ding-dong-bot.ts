@@ -15,9 +15,11 @@ import {
   log,
   Friendship,
 }                  from 'wechaty'
-import { callLocalAPI } from './api.ts'
+import { pickListAPI, addUserAPI, UserData, addUserTaskAPI, TaskData } from './api.ts'
 
 import qrcodeTerminal from 'qrcode-terminal'
+
+import { nanoid } from 'nanoid'
 
 let interval: NodeJS.Timer| undefined
 
@@ -27,8 +29,8 @@ async function sendMessageToAll () {
   const roomList = await bot.Room.findAll()
 
   try {
-    const resp = await callLocalAPI()
-    const { success, result } = resp || {}
+    const resp = await pickListAPI()
+    const { success, result } = resp
 
     if (success) {
       // 给用户发消息
@@ -121,16 +123,75 @@ async function onFriendship (friendship: Friendship) {
   log.info(logMsg)
 }
 
+async function checkUserTask (str: string): Promise<boolean> {
+  return str.startsWith('蹲号') && str.length > 10
+}
+
+async function checkUserTaskDetail (str: string): Promise<boolean> {
+  return str.includes('规则名称：') && str.includes('规则：')  && str.includes('体型：') && str.includes('门派：') && str.includes('价格：')
+}
+
 async function onMessage (msg: Message) {
   log.info('StarterBot', msg.toString())
+
+  if (msg.text() === '蹲号') {
+    // 创建别名逻辑
+    const contact = msg.talker()
+    const name = contact.name()
+    const alias = await contact.alias()
+    log.info(`联系人昵称: ${name} , 微信别名： ${alias}`)
+
+    const noid = nanoid()
+    const newAlias = `friend_${noid}`
+    let wechatRename = alias || newAlias
+    if (!alias) {
+      log.info('没别名')
+      await contact.alias(newAlias)
+      wechatRename = newAlias
+    }
+
+    const newUser: UserData = {
+      name,
+      wechat_rename: wechatRename,
+    }
+    await addUserAPI(newUser)
+    await contact.say('回复下面内容模版（不包含本行）：\n蹲号\n规则名称：一狐丝成女\n规则：金陵凤 金发·璨月蝶心 曼纱旋舞\n体型：成女\n门派：七秀 万花\n价格：5000')
+    return
+  }
+
+  // 顿号规则任务
+  const isTask = await checkUserTask(msg.text())
+  if (isTask) {
+
+    const isMap = await checkUserTaskDetail(msg.text())
+    if (!isMap) {
+      await msg.say('蹲号规则配置错误')
+      return
+    }
+
+    const contact = msg.talker()
+    const name = contact.name()
+    const alias = await contact.alias()
+    log.info(`联系人昵称: ${name} , 微信别名： ${alias}`)
+
+    const newTask: TaskData = {
+      task: msg.text(),
+      wechat_rename: alias || '',
+    }
+    const resp  = await addUserTaskAPI(newTask)
+    const { success, result } = resp
+
+    if (success) {
+      await contact.say('蹲号成功')
+    } else {
+      await contact.say(result)
+    }
+    return
+  }
 
   // 测试ding~dong：
   if (msg.text() === 'ding') {
     await msg.say('dong')
-  }
-  // 蹲号模板（暂未开放）：
-  if (msg.text() === '蹲号') {
-    await msg.say('蹲号模版(暂未开放):\n 条件1：\n 条件2：\n 条件3：\n')
   }
 }
 
