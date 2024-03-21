@@ -3,6 +3,13 @@ interface ApiResponse {
   result: string;
 }
 
+interface ApiTaskResponse {
+  success: boolean;
+  result: {
+    [key: string]: string;
+  };
+}
+
 export interface UserData {
   name: string;
   wechat_rename: string;
@@ -77,6 +84,24 @@ export async function addUserTaskAPI (user: TaskData): Promise<ApiResponse> {
     return result
   } catch (error) {
     console.error('Failed to post data:', error)
+    throw error
+  }
+}
+
+// 蹲号任务列表
+export async function getDoneTaskAPI (): Promise<ApiTaskResponse> {
+  try {
+    // 使用 fetch 发起 GET 请求
+    const response = await fetch('http://127.0.0.1:8000/v1/api/get_done_task')
+    // 确保响应是 OK 的
+    if (!response.ok) {
+      throw new Error(`Error! status: ${response.status}`)
+    }
+    // 解析 JSON 响应体
+    const result: ApiTaskResponse = await response.json() as ApiTaskResponse
+    return result
+  } catch (error) {
+    console.error('Failed to fetch data:', error)
     throw error
   }
 }

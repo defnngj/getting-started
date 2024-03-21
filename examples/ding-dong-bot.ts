@@ -15,7 +15,7 @@ import {
   log,
   Friendship,
 }                  from 'wechaty'
-import { pickListAPI, addUserAPI, UserData, addUserTaskAPI, TaskData } from './api.ts'
+import { pickListAPI, addUserAPI, UserData, addUserTaskAPI, TaskData, getDoneTaskAPI } from './api.ts'
 
 import qrcodeTerminal from 'qrcode-terminal'
 
@@ -29,20 +29,39 @@ async function sendMessageToAll () {
   const roomList = await bot.Room.findAll()
 
   try {
+    // 捡漏任务
     const resp = await pickListAPI()
-    const { success, result } = resp
+    const { success: pickListSuccess, result: pickListResult }  = resp
 
-    if (success) {
+    if (pickListSuccess) {
       // 给用户发消息
       for (const contact of contactList) {
         if (contact.type() === bot.Contact.Type.Individual) {
-          await contact.say(result)
+          await contact.say(pickListResult)
         }
       }
       // 给群发消息
       for (const room of roomList) {
-        await room.say(result)
+        await room.say(pickListResult)
       }
+    }
+
+    // 蹲号任务
+    const task = await getDoneTaskAPI()
+    const { success: taskSuccess, result: taskResult } = task
+
+    if (taskSuccess) {
+      for (const contact of contactList) {
+        const alias = await contact.alias()
+        if (alias !== undefined) {
+          const content = taskResult[alias]
+          if (content !== undefined) {
+            // 发给蹲号任务
+            await contact.say(content)
+          }
+        }
+      }
+
     }
   } catch (err) {
     console.error(err)
