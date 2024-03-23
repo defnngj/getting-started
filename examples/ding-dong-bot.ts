@@ -25,6 +25,8 @@ import {
   delUserTaskAPI,
   getMeTasDetailsAPI,
   getMeTaskListAPI,
+  OpinionData,
+  addOpinionAPI,
 } from './api.ts'
 
 import { calculateDelayTime } from './utils.ts'
@@ -197,6 +199,10 @@ async function checkUserTaskDetail (str: string): Promise<boolean> {
   return str.includes('规则名称：') && str.includes('规则：')  && str.includes('体型：') && str.includes('门派：') && str.includes('价格：')
 }
 
+async function checkSuggest (str: string):Promise<boolean> {
+  return str.startsWith('意见 ') && str.length > 4
+}
+
 async function onMessage (msg: Message) {
   log.info('StarterBot', msg.toString())
 
@@ -221,11 +227,18 @@ async function onMessage (msg: Message) {
       wechat_rename: wechatRename,
     }
     await addUserAPI(newUser)
-    await contact.say('回复下面内容模版（不包含本行）：\n蹲号\n规则名称：一狐丝成女\n规则：金陵凤 金发·璨月蝶心 曼纱旋舞\n体型：成女\n门派：七秀 万花\n价格：5000')
+    const crouchTemp = `回复下面内容模版（不包含本行）：
+蹲号
+规则名称：一狐丝成女
+规则：金陵凤 金发·璨月蝶心 曼纱旋舞·衣
+体型：成女
+门派：七秀 万花
+价格：5000`
+    await contact.say(crouchTemp)
     return
   }
 
-  // 顿号规则任务
+  // 配置蹲号规则任务
   const isTask = await checkUserTask(msg.text())
   if (isTask) {
 
@@ -256,6 +269,7 @@ async function onMessage (msg: Message) {
     return
   }
 
+  // 删除我的蹲号
   const isDelTask = await checkDelUserTask(msg.text())
   if (isDelTask) {
     const contact = msg.talker()
@@ -279,6 +293,7 @@ async function onMessage (msg: Message) {
     return
   }
 
+  // 查看的我蹲号详情
   const isMeTask = await checkMeUserTask(msg.text())
   if (isMeTask) {
     const contact = msg.talker()
@@ -302,6 +317,7 @@ async function onMessage (msg: Message) {
     return
   }
 
+  // 查看的我蹲号列表
   const isMeTaskList = await checkMeUserTaskList(msg.text())
   if (isMeTaskList) {
     const contact = msg.talker()
@@ -324,6 +340,42 @@ async function onMessage (msg: Message) {
     }
     return
   }
+
+  // 用户意见
+  const isSuggest = await checkSuggest(msg.text())
+  if (isSuggest) {
+    const contact = msg.talker()
+    const name = contact.name()
+    const alias = await contact.alias()
+    log.info(`联系人昵称: ${name} , 微信别名： ${alias}`)
+
+    const opinionData: OpinionData = {
+      opinion: msg.text(),
+      wechat_rename: alias || '',
+    }
+    const resp  = await addOpinionAPI(opinionData)
+    const { success, result } = resp
+
+    if (success) {
+      await contact.say(result)
+    } else {
+      await contact.say(result)
+    }
+    return
+  }
+
+  // 功能
+  if (msg.text() === '功能') {
+    const helpText = `回复: "蹲号"，可配置蹲号规则。
+回复: "删除蹲号 规则名称"，可删除蹲号规则。
+回复: "我的蹲号 规则名称"，可显示顿号规则详情。
+回复："我的蹲号列表"，可显示配置的蹲号列表。
+回复: "意见 意见内容"，可提供您宝贵意见，我们会继续改进。
+回复: "功能"，可看小舞的所有功能。
+详细功能可参考最新朋友圈。`
+    await msg.say(helpText)
+  }
+
   // 测试ding~dong：
   if (msg.text() === 'ding') {
     await msg.say('dong')
