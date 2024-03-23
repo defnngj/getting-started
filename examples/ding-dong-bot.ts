@@ -15,7 +15,19 @@ import {
   log,
   Friendship,
 }                  from 'wechaty'
-import { pickListAPI, addUserAPI, UserData, addUserTaskAPI, TaskData, getDoneTaskAPI } from './api.ts'
+import {
+  pickListAPI,
+  addUserAPI,
+  UserData,
+  addUserTaskAPI,
+  TaskData,
+  getDoneTaskAPI,
+  delUserTaskAPI,
+  getMeTasDetailsAPI,
+  getMeTaskListAPI,
+} from './api.ts'
+
+import { calculateDelayTime } from './utils.ts'
 
 import qrcodeTerminal from 'qrcode-terminal'
 
@@ -86,10 +98,14 @@ function onScan (qrcode: string, status: ScanStatus) {
 function onLogin (user: Contact) {
   log.info('StarterBot', '%s login', user)
   log.info('开启定时任务！！')
+
   // 确保定时器只被设置一次
   if (!interval) {
-    interval = setInterval(() => {
-      // 使用立即执行的异步函数来调用 sendMessageToAll
+    const delayTime = calculateDelayTime(1)
+    log.info('delayTime', delayTime)
+
+    setTimeout(() => {
+      // 当前小时先执行一次
       void (async () => {
         try {
           await sendMessageToAll()
@@ -97,7 +113,19 @@ function onLogin (user: Contact) {
           console.error(error)
         }
       })()
-    }, 60 * 60 * 1000) // 设置为每小时执行一次
+
+      // 随后每小时执行一次
+      interval = setInterval(() => {
+        void (async () => {
+          try {
+            await sendMessageToAll()
+          } catch (error) {
+            console.error(error)
+          }
+        })()
+      }, 60 * 60 * 1000) // 设置为每小时执行一次
+    }, delayTime)
+
   }
 }
 
@@ -127,7 +155,14 @@ async function onFriendship (friendship: Friendship) {
 
         // if want to send msg , you need to delay sometimes
         await new Promise((r) => setTimeout(r, 1000))
-        await friendship.contact().say(`${friendship.contact().name()} 你好, 我是剑三小舞!`)
+        await friendship.contact().say(`${friendship.contact().name()} 你好, 我是剑三小舞!\n 
+回复: "蹲号"，可配置蹲号规则。
+回复: "删除蹲号 规则名称"，可删除蹲号规则。
+回复: "我的蹲号 规则名称"，可显示顿号规则详情。
+回复："我的蹲号列表"，可显示配置的蹲号列表。
+回复: "意见 意见内容"，可提供您宝贵意见，我们会继续改进。
+回复: "功能"，可看小舞的所有功能。
+详细功能可参考最新朋友圈。`)
         log.info('after accept')
         break
 
@@ -144,6 +179,18 @@ async function onFriendship (friendship: Friendship) {
 
 async function checkUserTask (str: string): Promise<boolean> {
   return str.startsWith('蹲号') && str.length > 10
+}
+
+async function checkDelUserTask (str: string):Promise<boolean> {
+  return str.startsWith('删除蹲号 ') && str.length > 7
+}
+
+async function checkMeUserTaskList (str: string):Promise<boolean> {
+  return str.startsWith('我的蹲号')
+}
+
+async function checkMeUserTask (str: string):Promise<boolean> {
+  return str.startsWith('我的蹲号 ') && str.length > 7
 }
 
 async function checkUserTaskDetail (str: string): Promise<boolean> {
@@ -195,6 +242,7 @@ async function onMessage (msg: Message) {
 
     const newTask: TaskData = {
       task: msg.text(),
+      task_name: '',
       wechat_rename: alias || '',
     }
     const resp  = await addUserTaskAPI(newTask)
@@ -208,6 +256,74 @@ async function onMessage (msg: Message) {
     return
   }
 
+  const isDelTask = await checkDelUserTask(msg.text())
+  if (isDelTask) {
+    const contact = msg.talker()
+    const name = contact.name()
+    const alias = await contact.alias()
+    log.info(`联系人昵称: ${name} , 微信别名： ${alias}`)
+
+    const delTask: TaskData = {
+      task: '',
+      task_name: msg.text(),
+      wechat_rename: alias || '',
+    }
+    const resp  = await delUserTaskAPI(delTask)
+    const { success, result } = resp
+
+    if (success) {
+      await contact.say('删除蹲号成功')
+    } else {
+      await contact.say(result)
+    }
+    return
+  }
+
+  const isMeTask = await checkMeUserTask(msg.text())
+  if (isMeTask) {
+    const contact = msg.talker()
+    const name = contact.name()
+    const alias = await contact.alias()
+    log.info(`联系人昵称: ${name} , 微信别名： ${alias}`)
+
+    const meTask: TaskData = {
+      task: '',
+      task_name: msg.text(),
+      wechat_rename: alias || '',
+    }
+    const resp  = await getMeTasDetailsAPI(meTask)
+    const { success, result } = resp
+
+    if (success) {
+      await contact.say(result)
+    } else {
+      await contact.say(result)
+    }
+    return
+  }
+
+  const isMeTaskList = await checkMeUserTaskList(msg.text())
+  if (isMeTaskList) {
+    const contact = msg.talker()
+    const name = contact.name()
+    const alias = await contact.alias()
+    log.info(`联系人昵称: ${name} , 微信别名： ${alias}`)
+
+    const meTaskList: TaskData = {
+      task: '',
+      task_name: msg.text(),
+      wechat_rename: alias || '',
+    }
+    const resp  = await getMeTaskListAPI(meTaskList)
+    const { success, result } = resp
+
+    if (success) {
+      await contact.say(result)
+    } else {
+      await contact.say(result)
+    }
+    return
+  }
   // 测试ding~dong：
   if (msg.text() === 'ding') {
     await msg.say('dong')
