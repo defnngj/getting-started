@@ -17,7 +17,7 @@ export WECHATY_PUPPET=wechaty-puppet-padlocal  #local pad 登录
 http://pad-local.com/ 注册个账号， 获得一个7天试用Token
 
 ```bash
-export WECHATY_PUPPET_PADLOCAL_TOKEN=puppet_padlocal_f5cbb6924f3e4e958bc97fbc92a8d3c1
+export WECHATY_PUPPET_PADLOCAL_TOKEN=puppet_padlocal_5d75101eed104e1d971fe36a12c48fee
 ```
 
 * 启动项目
