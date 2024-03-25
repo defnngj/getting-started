@@ -242,15 +242,6 @@ async function onMessage (msg: Message) {
     return
   }
 
-  const isPick =  await checkPicktTreasure(msg.text())
-  if (isPick) {
-    const helpText = `亲~！ 
-我们会每小时自动推送捡漏信息。
-回复: "功能"，可看小舞的所有功能。
-详细功能可参考最新朋友圈。`
-    await msg.say(helpText)
-  }
-
   // 配置蹲号规则任务
   const isTask = await checkUserTask(msg.text())
   if (isTask) {
@@ -377,7 +368,18 @@ async function onMessage (msg: Message) {
     return
   }
 
-  // 功能
+  // 捡漏回复
+  const isPick =  await checkPicktTreasure(msg.text())
+  if (isPick) {
+    const helpText = `亲~！ 
+我们会每小时自动推送捡漏信息。
+回复: "功能"，可看小舞的所有功能。
+详细功能可参考最新朋友圈。`
+    const contact = msg.talker()
+    await contact.say(helpText)
+  }
+
+  // 功能回复
   if (msg.text() === '功能') {
     const helpText = `回复: "蹲号"，可配置蹲号规则。
 回复: "删除蹲号 规则名称"，可删除蹲号规则。
@@ -386,7 +388,8 @@ async function onMessage (msg: Message) {
 回复: "意见 意见内容"，可提供您宝贵意见，我们会继续改进。
 回复: "功能"，可看小舞的所有功能。
 详细功能可参考最新朋友圈。`
-    await msg.say(helpText)
+    const contact = msg.talker()
+    await contact.say(helpText)
   }
 
   // 测试ding~dong：
