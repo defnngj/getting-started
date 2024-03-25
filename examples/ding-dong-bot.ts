@@ -179,6 +179,10 @@ async function onFriendship (friendship: Friendship) {
   log.info(logMsg)
 }
 
+async function checkPicktTreasure (str: string):Promise<boolean> {
+  return str.startsWith('捡漏')
+}
+
 async function checkUserTask (str: string): Promise<boolean> {
   return str.startsWith('蹲号') && str.length > 10
 }
@@ -236,6 +240,15 @@ async function onMessage (msg: Message) {
 价格：5000`
     await contact.say(crouchTemp)
     return
+  }
+
+  const isPick =  await checkPicktTreasure(msg.text())
+  if (isPick) {
+    const helpText = `亲~！ 
+我们会每小时自动推送捡漏信息。
+回复: "功能"，可看小舞的所有功能。
+详细功能可参考最新朋友圈。`
+    await msg.say(helpText)
   }
 
   // 配置蹲号规则任务
