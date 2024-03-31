@@ -10,6 +10,16 @@ interface ApiTaskResponse {
   };
 }
 
+
+interface ApiUserResponse {
+  success: boolean;
+  result: {
+    [key: string]: {
+      is_pick_up_leak: number;
+    };
+  };
+}
+
 export interface UserData {
   name: string;
   wechat_rename: string;
@@ -23,6 +33,12 @@ export interface TaskData {
 
 export interface OpinionData {
   opinion: string;
+  wechat_rename: string;
+}
+
+// 用户捡漏开关
+export interface PickSwitchData {
+  pick_up_leak: string;
   wechat_rename: string;
 }
 
@@ -196,6 +212,50 @@ export async function addOpinionAPI (opinion: OpinionData): Promise<ApiResponse>
     return result
   } catch (error) {
     console.error('Failed to post data:', error)
+    throw error
+  }
+}
+
+// 更新用户捡漏开关
+export async function updateUserPickAPI (pick: PickSwitchData): Promise<ApiResponse> {
+  try {
+    // 使用 fetch 发起 POST 请求
+    const response = await fetch('http://127.0.0.1:8000/v1/api/update_pick_up_leak', {
+      body: JSON.stringify(pick),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    // 确保响应是 OK 的
+    if (!response.ok) {
+      throw new Error(`Error! status: ${response.status}`)
+    }
+
+    // 解析 JSON 响应体，并使用类型断言
+    const result = await response.json() as ApiResponse
+    return result
+  } catch (error) {
+    console.error('Failed to post data:', error)
+    throw error
+  }
+}
+
+// 获取用户开关列表
+export async function getUserSwitchListAPI (): Promise<ApiUserResponse> {
+  try {
+    // 使用 fetch 发起 GET 请求
+    const response = await fetch(`http://127.0.0.1:8000/v1/api/get_user_switch`)
+    // 确保响应是 OK 的
+    if (!response.ok) {
+      throw new Error(`Error! status: ${response.status}`)
+    }
+    // 解析 JSON 响应体
+    const result: ApiUserResponse = await response.json() as ApiUserResponse
+    return result
+  } catch (error) {
+    console.error('Failed to fetch data:', error)
     throw error
   }
 }

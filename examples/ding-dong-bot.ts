@@ -27,6 +27,9 @@ import {
   getMeTaskListAPI,
   OpinionData,
   addOpinionAPI,
+  PickSwitchData,
+  updateUserPickAPI,
+  getUserSwitchListAPI,
 } from './api.ts'
 
 import { calculateDelayTime } from './utils.ts'
@@ -47,9 +50,22 @@ async function sendMessageToAll () {
     const resp = await pickListAPI()
     const { success: pickListSuccess, result: pickListResult }  = resp
 
-    if (pickListSuccess) {
+    const user = await getUserSwitchListAPI()
+    const { success: switchListSuccess, result: switchListResult }  = user
+
+    if (pickListSuccess === true && switchListSuccess === true) {
       // 给用户发消息
       for (const contact of contactList) {
+        const name = contact.name()
+        const alias = await contact.alias()
+        log.info(`联系人昵称: ${name} , 微信别名： ${alias}`)
+
+        const userSwitch = switchListResult[alias]
+        
+        if (!(userSwitch === undefined || userSwitch.is_pick_up_leak === 1)) {
+          continue
+        }
+
         if (contact.type() === bot.Contact.Type.Individual) {
           await contact.say(pickListResult)
         }
@@ -162,6 +178,8 @@ async function onFriendship (friendship: Friendship) {
 回复: "删除蹲号 规则名称"，可删除蹲号规则。
 回复: "我的蹲号 规则名称"，可显示顿号规则详情。
 回复："我的蹲号列表"，可显示配置的蹲号列表。
+回复: "关闭捡漏"，可关闭捡漏消息提醒。
+回复: "开启捡漏"，可开启捡漏消息提醒。
 回复: "意见 意见内容"，可提供您宝贵意见，我们会继续改进。
 回复: "功能"，可看小舞的所有功能。
 详细功能可参考最新朋友圈。`)
@@ -345,6 +363,43 @@ async function onMessage (msg: Message) {
     return
   }
 
+  // 查看的我蹲号列表
+  if (msg.text() === "关闭捡漏" || msg.text() == "开启捡漏") {
+    const contact = msg.talker()
+    const name = contact.name()
+    const alias = await contact.alias()
+    log.info(`联系人昵称: ${name} , 微信别名： ${alias}`)
+    
+    const noid = nanoid()
+    const newAlias = `friend_${noid}`
+    let wechatRename = alias || newAlias
+    if (!alias) {
+      await contact.alias(newAlias)
+      wechatRename = newAlias
+    }
+
+    const newUser: UserData = {
+      name,
+      wechat_rename: wechatRename,
+    }
+    await addUserAPI(newUser)
+
+    const userPickSwitch: PickSwitchData = {
+      pick_up_leak: msg.text(),
+      wechat_rename: alias || '',
+    }
+    const resp  = await updateUserPickAPI(userPickSwitch)
+    const { success, result } = resp
+
+    if (success) {
+      await contact.say(result)
+    } else {
+      await contact.say(result)
+    }
+    return
+  }
+
+
   // 用户意见
   const isSuggest = await checkSuggest(msg.text())
   if (isSuggest) {
@@ -381,10 +436,31 @@ async function onMessage (msg: Message) {
 
   // 功能回复
   if (msg.text() === '功能') {
+    const contact1 = msg.talker()
+    const name = contact1.name()
+    const alias = await contact1.alias()
+    log.info(`联系人昵称: ${name} , 微信别名： ${alias}`)
+
+    const noid = nanoid()
+    const newAlias = `friend_${noid}`
+    let wechatRename = alias || newAlias
+    if (!alias) {
+      await contact1.alias(newAlias)
+      wechatRename = newAlias
+    }
+
+    const newUser: UserData = {
+      name,
+      wechat_rename: wechatRename,
+    }
+    await addUserAPI(newUser)
+
     const helpText = `回复: "蹲号"，可配置蹲号规则。
 回复: "删除蹲号 规则名称"，可删除蹲号规则。
 回复: "我的蹲号 规则名称"，可显示顿号规则详情。
 回复："我的蹲号列表"，可显示配置的蹲号列表。
+回复: "关闭捡漏"，可关闭捡漏消息提醒。
+回复: "开启捡漏"，可开启捡漏消息提醒。
 回复: "意见 意见内容"，可提供您宝贵意见，我们会继续改进。
 回复: "功能"，可看小舞的所有功能。
 详细功能可参考最新朋友圈。`
